@@ -1,6 +1,6 @@
 const gulp = require("gulp");
 const babel = require("gulp-babel");
-const browerify = require("gulp-browserify");
+const browserify = require("gulp-browserify");
 const concat = require("gulp-concat");
 const hash = require("gulp-hash");
 const less = require("gulp-less");
@@ -9,6 +9,7 @@ const rimraf = require("gulp-rimraf");
 const runSequence = require("run-sequence");
 const uglify = require("gulp-uglify");
 
+let DEV_MODE = false;
 const SRC_PATH = "./src";
 const DEST_PATH = "./public";
 const ASSETS_PATH = `${DEST_PATH}/assets`;
@@ -24,6 +25,7 @@ gulp.task("build", [ "clean" ], (cb) => {
     runSequence(
         "build-vendor",
         "build-js",
+        "build-less",
         "build-html",
         cb
     );
@@ -42,18 +44,39 @@ gulp.task("build-vendor", () => {
 });
 
 gulp.task("build-js", () => {
-    return gulp.src(`${SRC_PATH}/**/*.js`)
-               .pipe(babel({
-                   sourceRoot : SRC_PATH,
-                   presets : [
-                       "es2015"
-                   ]
-               }))
-               .pipe(uglify())
-               .pipe(hash())
-               .pipe(gulp.dest(ASSETS_PATH))
-               .pipe(hash.manifest("manifest.json", true))
-               .pipe(gulp.dest(ASSETS_PATH));
+    const chain = gulp.src(`${SRC_PATH}/app/index.js`)
+        .pipe(browserify({
+            transform: [ "babelify" ]
+        }));
+
+    if(DEV_MODE)
+    {
+        return chain.pipe(gulp.dest(`${ASSETS_PATH}/app`));
+    }
+    else
+    {
+        return chain.pipe(uglify())
+                    .pipe(hash())
+                    .pipe(gulp.dest(`${ASSETS_PATH}/app`))
+                    .pipe(hash.manifest("manifest.json", true))
+                    .pipe(gulp.dest(ASSETS_PATH));
+    }
+});
+
+gulp.task("build-less", () => {
+    const chain = gulp.src(`${SRC_PATH}/app/res/index.less`)
+                      .pipe(less());
+    if (DEV_MODE)
+    {
+        return chain.pipe(gulp.dest(`${ASSETS_PATH}/res`));
+    }
+    else
+    {
+        chain.pipe(hash())
+             .pipe(gulp.dest(`${ASSETS_PATH}/res`))
+             .pipe(hash.manifest("manifest.json", true))
+             .pipe(gulp.dest(ASSETS_PATH));
+    }
 });
 
 gulp.task("build-html", () => {
@@ -61,4 +84,31 @@ gulp.task("build-html", () => {
     return gulp.src(`${SRC_PATH}/index.html`)
                .pipe(revReplace({ manifest }))
                .pipe(gulp.dest(DEST_PATH));
+});
+
+
+/*********************************/
+/* DEVELOPMENT MODE              */
+/*********************************/
+gulp.task("dev", cb => {
+    DEV_MODE = true;
+    runSequence(
+        "build",
+        "watch-js",
+        "watch-less",
+        "server:start",
+        cb
+    );
+});
+
+gulp.task("watch-js", () => {
+    gulp.watch(`${SRC_PATH}/app/**/*.js`, [ "build-js" ]);
+});
+
+gulp.task("watch-less", () => {
+    gulp.watch(`${SRC_PATH}/app/res/*.less`, [ "build-less" ]);
+});
+
+gulp.task("server:start", () => {
+    require("./index");
 });
