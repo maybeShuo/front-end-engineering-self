@@ -4,7 +4,6 @@ const app = express();
 app.use(express.static("./public", {
     maxAge : "365 days"
 }));
-// TODO Cache Control
 
 const port = process.env.PORT || 8081;
 app.listen(port, () => {

@@ -44,7 +44,7 @@ gulp.task("build-vendor", () => {
 });
 
 gulp.task("build-js", () => {
-    const chain = gulp.src(`${SRC_PATH}/app/index.js`)
+    const chain = gulp.src(`${SRC_PATH}/app/**/*.js`)
         .pipe(browserify({
             transform: [ "babelify" ]
         }));
